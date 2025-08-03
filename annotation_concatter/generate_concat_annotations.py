@@ -121,6 +121,12 @@ def generate_transition_prompt(prev_summaries: List[tuple], current_summary: str
     """
     # 构建前面片段的描述文本
     if prev_summaries:
+        # 限制历史片段数量，避免过长
+        max_history = 3
+        if len(prev_summaries) > max_history:
+            # 只保留最近的几个片段
+            prev_summaries = prev_summaries[-max_history:]
+        
         history_str = "\n".join([
             f"Segment {i+1} (from video {video_id}):\n{summary}"
             for i, (video_id, summary) in enumerate(prev_summaries)
@@ -131,22 +137,37 @@ def generate_transition_prompt(prev_summaries: List[tuple], current_summary: str
     current_str = current_summary
     
     prompt = f"""You are a video concatenation description assistant. You will receive:
-1. **History**: Descriptions of all previous video segments in a concatenated video (may be empty for the first segment).  
+1. **History**: Descriptions of previous video segments in a concatenated video (may be empty for the first segment).  
 2. **Current**: Description of the current video segment.
 
 Your task is to combine **Current** with **History** to produce one **short**, **coherent**, and **natural** paragraph summary (1–2 sentences) in a continuous storytelling style. The summary should:
 
-- Seamlessly connect past and present content as a single narrative, **briefly referencing the previous scene** to create smooth transitions between scenes.
+- Seamlessly connect past and present content as a single narrative, referencing previous segments to create smooth transitions between scenes.
+- For the third segment onwards, reference content from recent previous segments to maintain narrative continuity, but focus primarily on the current scene.
 - Focus on describing **what has changed** or **what's new** in the current scene, while maintaining context from previous segments.
+- When there are contextual connections between segments, clearly describe what has been added, changed, or is being done differently based on the previous content.
 - **Do not** repeat objects, settings, or details already mentioned in **History** unless necessary for context.
 - **Avoid** any atmospheric, emotional, or subjective commentary; describe the visual content **objectively**.
 - **Do not** start with "This video…" or similar phrases.
 - If **History** is empty, simply summarize **Current** on its own.
+- Use varied and natural transition expressions instead of always using "following". Examples include:
+  * "After organizing items in the kitchen, the scene shifts to..."
+  * "Continuing the sequence, the video now shows..."
+  * "Building upon the previous scenes of..., the current segment presents..."
+  * "Transitioning from the earlier segment, we now see..."
+  * "With the completion of... the focus moves to..."
+  * "Having finished with..., the person now proceeds to..."
+  * "The scene then changes to show..."
+  * "Subsequently, the setting shifts to..."
+- **Avoid** repetitive transitions or descriptions that simply restate what was already described in previous segments.
+- **Focus** on how the current scene builds upon or differs from previous scenes rather than restating them.
+- **Create** natural narrative flow by emphasizing the progression of activities or changes in setting.
 
 Examples of good transitions:
-- "Following the kitchen scene, the video now shows a person organizing items on a wooden desk."
 - "After arranging objects in a box, the scene shifts to someone preparing a beverage in a kitchen."
-- "Continuing from the previous segment, the person now moves to a different area to tidy up a pair of shoes."
+- "Continuing from the previous segment where items were organized into bags, the person now moves to a different area to tidy up a pair of shoes."
+- "Building upon the previous scenes of organizing items in the kitchen and packing belongings, the current segment shows a person carefully tying their shoelaces."
+- "With the completion of organizing personal items into handbags, the focus now moves to a more personal grooming activity as the scene shows someone attending to their footwear."
 
 ---
 ### Input
@@ -158,7 +179,7 @@ Current:
 {current_str}
 
 ### Output
-A single paragraph summary (1–2 sentences) in natural storytelling style, highlighting changes and maintaining narrative flow. No extra text."""
+A single paragraph summary (1–2 sentences) in natural storytelling style, highlighting changes and maintaining narrative flow while avoiding repetition. No extra text."""
 
     return prompt
 
