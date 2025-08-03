@@ -136,11 +136,17 @@ def generate_transition_prompt(prev_summaries: List[tuple], current_summary: str
 
 Your task is to combine **Current** with **History** to produce one **short**, **coherent**, and **natural** paragraph summary (1–2 sentences) in a continuous storytelling style. The summary should:
 
-- Seamlessly connect past and present content as a single narrative, focusing **only** on **what has changed** or **what's new** in the current scene.  
-- **Do not** repeat objects, settings, or details already mentioned in **History**.  
-- **Avoid** any atmospheric, emotional, or subjective commentary; describe the visual content **objectively**.  
-- **Do not** start with "This video…" or similar phrases.  
+- Seamlessly connect past and present content as a single narrative, **briefly referencing the previous scene** to create smooth transitions between scenes.
+- Focus on describing **what has changed** or **what's new** in the current scene, while maintaining context from previous segments.
+- **Do not** repeat objects, settings, or details already mentioned in **History** unless necessary for context.
+- **Avoid** any atmospheric, emotional, or subjective commentary; describe the visual content **objectively**.
+- **Do not** start with "This video…" or similar phrases.
 - If **History** is empty, simply summarize **Current** on its own.
+
+Examples of good transitions:
+- "Following the kitchen scene, the video now shows a person organizing items on a wooden desk."
+- "After arranging objects in a box, the scene shifts to someone preparing a beverage in a kitchen."
+- "Continuing from the previous segment, the person now moves to a different area to tidy up a pair of shoes."
 
 ---
 ### Input
@@ -152,7 +158,7 @@ Current:
 {current_str}
 
 ### Output
-A single paragraph summary (1–2 sentences) in natural storytelling style, highlighting only the new changes. No extra text."""
+A single paragraph summary (1–2 sentences) in natural storytelling style, highlighting changes and maintaining narrative flow. No extra text."""
 
     return prompt
 
@@ -250,8 +256,8 @@ def process_concat_video(concat_item: Dict, video_descriptions: Dict[str, str]) 
     
     result_data = []
     
-    # 使用线程池并发处理每个片段，增加并发数到10
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    # 使用线程池并发处理每个片段，增加并发数到20
+    with ThreadPoolExecutor(max_workers=20) as executor:
         # 提交所有任务
         future_to_index = {
             executor.submit(process_single_segment, i, concat_item['boundaries'], video_descriptions): i
@@ -287,7 +293,7 @@ def process_concat_video(concat_item: Dict, video_descriptions: Dict[str, str]) 
 def generate_concat_annotations(concat_plan_file: str, 
                               video_descriptions_file: str,
                               output_file: str,
-                              max_workers: int = 8) -> None:
+                              max_workers: int = 20) -> None:
     """
     主函数：生成拼接视频标注数据
     
@@ -311,7 +317,7 @@ def generate_concat_annotations(concat_plan_file: str,
     print("处理拼接视频...")
     results = []
     
-    # 使用线程池并发处理拼接视频，增加并发数到8
+    # 使用线程池并发处理拼接视频，增加并发数到20
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # 提交所有任务
         future_to_index = {
@@ -357,7 +363,7 @@ def main():
     output_file = '/data1/whq/annotation_maker/annotation_concatter/concatenated_video_annotations.json'
     
     # 生成拼接标注，使用更高的并发数
-    generate_concat_annotations(concat_plan_file, video_descriptions_file, output_file, max_workers=8)
+    generate_concat_annotations(concat_plan_file, video_descriptions_file, output_file, max_workers=20)
 
 
 if __name__ == "__main__":
