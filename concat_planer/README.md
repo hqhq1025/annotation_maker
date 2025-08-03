@@ -16,7 +16,6 @@
 
 3. **完整的元数据记录**：
    - 生成详细的拼接记录，包括每个拼接视频的组成
-   - 包含总时长和每个视频的分界点信息
    - 输出为JSON格式，便于后续处理
 
 ## 安装依赖
@@ -68,18 +67,14 @@ python3 concat_planer.py \
 ```json
 [
   {
-    "video_name": "video_001",
-    "video_path": "/data1/whq/sample_videos/video_001.mp4",
-    "duration_sec": 21.4,
-    "fps": 30.0,
-    "frames": []
+    "video_id": "video_001",
+    "duration": 21.4,
+    "path": "/data1/whq/sample_videos/video_001.mp4"
   },
   {
-    "video_name": "video_002",
-    "video_path": "/data1/whq/sample_videos/video_002.mp4",
-    "duration_sec": 45.1,
-    "fps": 30.0,
-    "frames": []
+    "video_id": "video_002",
+    "duration": 45.1,
+    "path": "/data1/whq/sample_videos/video_002.mp4"
   }
 ]
 ```
@@ -97,41 +92,14 @@ python3 concat_planer.py \
 [
   {
     "concat_video": "concat_00000.mp4",
-    "total_duration": 75.7,
-    "boundaries": [
-      {
-        "video_id": "test_video_2",
-        "start_time": 0.0,
-        "end_time": 25.0
-      },
-      {
-        "video_id": "test_video_1",
-        "start_time": 25.0,
-        "end_time": 40.5
-      },
-      {
-        "video_id": "test_video_3",
-        "start_time": 40.5,
-        "end_time": 75.7
-      }
-    ],
-    "videos": [
-      "test_video_2",
-      "test_video_1",
-      "test_video_3"
-    ]
+    "videos": ["video_003", "video_014", "video_025"]
+  },
+  {
+    "concat_video": "concat_00001.mp4",
+    "videos": ["video_007", "video_032"]
   }
 ]
 ```
-
-输出字段说明：
-- `concat_video`: 拼接后的视频文件名
-- `total_duration`: 拼接视频的总时长（秒）
-- `boundaries`: 每个原始视频在拼接视频中的时间边界信息
-  - `video_id`: 原始视频ID
-  - `start_time`: 该视频在拼接视频中的开始时间（秒）
-  - `end_time`: 该视频在拼接视频中的结束时间（秒）
-- `videos`: 组成该拼接视频的原始视频ID列表
 
 ## 复用策略说明
 
