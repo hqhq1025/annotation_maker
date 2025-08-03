@@ -13,6 +13,9 @@ import os
 import math
 from typing import List, Dict, Any
 
+# 添加OpenAI库导入
+from openai import OpenAI
+
 
 def load_concat_plan(plan_file: str) -> List[Dict]:
     """
@@ -127,6 +130,38 @@ def generate_transition_prompt(prev_summary: str, current_summary: str) -> str:
     return prompt
 
 
+def call_llm_api(prompt: str) -> str:
+    """
+    调用大语言模型API生成过渡描述
+    
+    Args:
+        prompt: 发送给大模型的提示词
+        
+    Returns:
+        大模型生成的过渡描述
+    """
+    # 初始化OpenAI客户端
+    client = OpenAI(
+        # 若没有配置环境变量，请用百炼API Key将下行替换为：api_key="sk-xxx",
+        api_key="sk-07809ce5885f4fc3aefd07b0ca0e1e11",  # 如何获取API Key：https://help.aliyun.com/zh/model-studio/developer-reference/get-api-key
+        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+    )
+    
+    try:
+        completion = client.chat.completions.create(
+            model="qwen-plus",  # 模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
+            messages=[
+                {'role': 'system', 'content': 'You are a helpful assistant.'},
+                {'role': 'user', 'content': prompt}
+            ]
+        )
+        return completion.choices[0].message.content
+    except Exception as e:
+        print(f"调用大模型API时出错: {e}")
+        # 出错时返回原始描述加上过渡标记
+        return f"[TRANSITION] {prompt.split('当前视频片段的内容如下：')[1].strip().strip('\"')}"
+
+
 def process_concat_video(concat_item: Dict, video_descriptions: Dict[str, str]) -> Dict[str, Any]:
     """
     处理单个拼接视频，生成标注数据
@@ -150,18 +185,17 @@ def process_concat_video(concat_item: Dict, video_descriptions: Dict[str, str]) 
         # 获取视频描述
         summary = video_descriptions.get(video_id, "")
         
-        # 对于非第一个片段，生成过渡提示（在实际应用中这里会调用LLM）
+        # 对于非第一个片段，生成过渡提示并调用LLM
         if i > 0 and summary:
             prev_boundary = concat_item['boundaries'][i-1]
             prev_video_id = prev_boundary['video_id']
             prev_summary = video_descriptions.get(prev_video_id, "")
             
             if prev_summary and summary:
-                # 在实际应用中，这里会调用LLM API
-                # 为演示目的，我们直接生成一个简单的过渡描述
+                # 生成过渡提示词
                 transition_prompt = generate_transition_prompt(prev_summary, summary)
-                # 模拟LLM响应
-                summary = f"[TRANSITION] {summary}"
+                # 调用大模型API
+                summary = call_llm_api(transition_prompt)
         
         result_data.append({
             "start": start_time,
