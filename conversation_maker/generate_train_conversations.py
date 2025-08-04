@@ -4,7 +4,7 @@
 
 输入:
 1. 拼接策略文件 (concat_metadata.json)
-2. 原始视频标注文件 (concatenated_video_annotations.json)
+2. 原始视频标注文件 (concatenated_video_annotations.json 或 cleaned版本)
 3. 图像帧路径 (sample_frames/ 目录下各视频子目录)
 
 输出:
@@ -176,8 +176,8 @@ def main():
                         default="/data1/whq/annotation_maker/concat_planer/concat_metadata.json",
                         help="拼接计划文件路径")
     parser.add_argument("--annotations", 
-                        default="/data1/whq/annotation_maker/annotation_concatter/concatenated_video_annotations.json",
-                        help="原始视频标注文件路径")
+                        default="/data1/whq/annotation_maker/annotation_concatter/concatenated_video_annotations_cleaned.json",
+                        help="原始视频标注文件路径（建议使用清理后的版本）")
     parser.add_argument("--sample_frames_dir", 
                         default="/data1/whq/sample_frames",
                         help="图像帧根目录路径")
