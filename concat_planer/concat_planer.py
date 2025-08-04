@@ -131,7 +131,8 @@ class VideoConcatenator:
             duration = video['duration']
             
             # 检查时长是否符合剩余时间要求
-            if duration < remaining_min:
+            # 视频时长必须大于等于剩余最小时间，且小于等于剩余最大时间
+            if duration < remaining_min or duration > remaining_max:
                 continue
                 
             # 如果不允许复用，检查是否已使用
@@ -168,7 +169,13 @@ class VideoConcatenator:
             available_videos = self._get_available_videos(current_duration)
             
             if not available_videos:
-                break
+                # 如果没有符合时长要求的视频，尝试放宽条件
+                # 仅在当前时长较小时放宽条件，避免最终超出最大时长
+                if current_duration < self.target_duration_min * 0.5:
+                    available_videos = self._get_available_videos_relaxed(current_duration)
+                
+                if not available_videos:
+                    break
                 
             # 根据复用模式选择视频
             if self.reuse_mode == "balanced":
@@ -180,13 +187,68 @@ class VideoConcatenator:
                 
             # 选择第一个视频（balanced模式下是使用次数最少的，random模式下是随机的）
             selected_video = available_videos[0]
+            
+            # 检查添加该视频后是否会超出最大时长
+            if current_duration + selected_video['duration'] > self.target_duration_max:
+                # 如果超出最大时长，则尝试寻找更小的视频
+                smaller_videos = [v for v in available_videos 
+                                if current_duration + v['duration'] <= self.target_duration_max]
+                if smaller_videos:
+                    selected_video = smaller_videos[0]
+                else:
+                    # 如果找不到合适的视频，结束当前拼接
+                    break
+            
             selected_videos.append(selected_video)
             current_duration += selected_video['duration']
             
             # 更新使用次数
             self.video_usage_count[selected_video['video_id']] += 1
             
+        # 如果最终时长不满足最小要求，放弃该拼接
+        if current_duration < self.target_duration_min:
+            return []
+            
         return selected_videos
+    
+    def _get_available_videos_relaxed(self, current_duration: float = 0) -> List[Dict[str, Any]]:
+        """
+        放宽条件获取可用视频列表（仅用于当前时长较小时）
+        
+        Args:
+            current_duration: 当前已选视频的总时长
+            
+        Returns:
+            可用视频列表
+        """
+        # 计算剩余时长范围
+        remaining_min = self.target_duration_min - current_duration
+        remaining_max = self.target_duration_max - current_duration
+        
+        available_videos = []
+        
+        # 计算最大使用次数
+        max_usage = self.total_concats * self.max_usage_ratio
+        
+        for video in self.videos:
+            video_id = video['video_id']
+            duration = video['duration']
+            
+            # 放宽条件：只检查是否小于剩余最大时间
+            if duration > remaining_max:
+                continue
+                
+            # 如果不允许复用，检查是否已使用
+            if not self.allow_reuse and self.video_usage_count[video_id] > 0:
+                continue
+                
+            # 如果允许复用，检查是否超过最大使用次数
+            if self.allow_reuse and self.video_usage_count[video_id] >= max_usage and max_usage > 0:
+                continue
+                
+            available_videos.append(video)
+            
+        return available_videos
     
     def generate_concatenations(self) -> List[Dict[str, Any]]:
         """
