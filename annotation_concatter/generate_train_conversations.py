@@ -94,13 +94,13 @@ def generate_train_conversations(concat_plan_file: str,
             # 获取当前视频片段的summary
             current_summary = video_summaries.get(video_id)
             
-            # 计算该片段的帧范围
-            start_frame = math.floor(start_time)
-            end_frame = math.floor(end_time)
+            # 计算该片段的帧范围（相对于各自视频的帧索引）
+            start_frame = 0  # 每个原始视频都从帧0开始
+            end_frame = math.floor(end_time - start_time)  # 相对于该视频片段的帧数
             
             # 为每一秒添加帧和对话
             for frame_idx in range(start_frame, end_frame + 1):  # 包含end_frame
-                # 构造图像路径
+                # 构造图像路径（每个原始视频的帧都从0开始）
                 image_path = f"{video_id}/frame_{frame_idx:05d}.jpg"
                 images.append(image_path)
                 
@@ -129,8 +129,9 @@ def generate_train_conversations(concat_plan_file: str,
             # 添加最后一个图像帧
             last_boundary = boundaries[-1]
             last_video_id = last_boundary['video_id']
+            last_start_time = last_boundary['start_time']
             last_end_time = last_boundary['end_time']
-            last_frame_idx = math.floor(last_end_time)
+            last_frame_idx = math.floor(last_end_time - last_start_time)  # 相对于该视频片段的帧数
             last_image_path = f"{last_video_id}/frame_{last_frame_idx:05d}.jpg"
             images.append(last_image_path)
             
