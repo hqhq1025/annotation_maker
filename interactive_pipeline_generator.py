@@ -76,28 +76,28 @@ def collect_parameters():
     
     # 基本路径配置
     print("\n[基本路径配置]")
-    params['workspace_root'] = ask_question(
+    params['workspace_root'] = os.path.abspath(ask_question(
         "工作区根目录", 
         default="/data1/whq", 
         required=True
-    )
+    ))
     
-    params['input_videos_dir'] = ask_question(
+    params['input_videos_dir'] = os.path.abspath(ask_question(
         "输入视频目录路径", 
         required=True
-    )
+    ))
     
-    params['sample_frames_dir'] = ask_question(
+    params['sample_frames_dir'] = os.path.abspath(ask_question(
         "采样帧输出目录路径", 
         default=os.path.join(params['workspace_root'], "sample_frames"),
         required=True
-    )
+    ))
     
-    params['output_script'] = ask_question(
+    params['output_script'] = os.path.abspath(ask_question(
         "生成的脚本文件名", 
         default="run_annotation_pipeline.sh",
         required=True
-    )
+    ))
     
     # 视频采样参数
     print("\n[视频采样参数]")

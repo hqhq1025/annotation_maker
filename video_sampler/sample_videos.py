@@ -48,8 +48,8 @@ def sample_video_frames(video_info):
                       "path": video_path, 
                       "reason": f"Video duration ({duration:.2f}s) is less than minimum ({min_duration}s)"}
     
-    # Create output directory for frames
-    os.makedirs(output_dir, exist_ok=True)
+    # Create output directory for frames using absolute path
+    os.makedirs(os.path.abspath(output_dir), exist_ok=True)
     
     # Calculate number of frames to sample
     expected_frames = int(duration / sampling_interval) + 1
@@ -67,9 +67,9 @@ def sample_video_frames(video_info):
         if not ret:
             break
             
-        # Save frame
+        # Save frame using absolute path
         frame_filename = f"frame_{frame_index:05d}.jpg"
-        frame_path = os.path.join(output_dir, frame_filename)
+        frame_path = os.path.join(os.path.abspath(output_dir), frame_filename)
         cv2.imwrite(frame_path, frame)
         
         # Record frame metadata
@@ -114,21 +114,21 @@ def main():
     
     args = parser.parse_args()
     
-    # Check if input directory exists
-    if not os.path.exists(args.input_dir):
+    # Check if input directory exists using absolute path
+    if not os.path.exists(os.path.abspath(args.input_dir)):
         print(f"Error: Input directory '{args.input_dir}' does not exist")
         sys.exit(1)
     
-    # Create output directory if it doesn't exist
-    os.makedirs(args.output_dir, exist_ok=True)
+    # Create output directory if it doesn't exist using absolute path
+    os.makedirs(os.path.abspath(args.output_dir), exist_ok=True)
     
     # Find all MP4 videos in input directory
-    video_files = [f for f in os.listdir(args.input_dir) if f.lower().endswith('.mp4')]
+    video_files = [f for f in os.listdir(os.path.abspath(args.input_dir)) if f.lower().endswith('.mp4')]
     
     if not video_files:
         print(f"Warning: No MP4 files found in '{args.input_dir}'")
-        # Create empty metadata file
-        with open(args.metadata_path, 'w') as f:
+        # Create empty metadata file using absolute path
+        with open(os.path.abspath(args.metadata_path), 'w') as f:
             json.dump([], f, indent=2)
         return
     
@@ -140,9 +140,9 @@ def main():
     # Prepare video info for processing
     video_info_list = []
     for video_file in video_files:
-        video_path = os.path.join(args.input_dir, video_file)
+        video_path = os.path.join(os.path.abspath(args.input_dir), video_file)
         video_name = Path(video_file).stem
-        frame_output_dir = os.path.join(args.output_dir, video_name)
+        frame_output_dir = os.path.join(os.path.abspath(args.output_dir), video_name)
         video_info_list.append((video_path, frame_output_dir, args.sampling_interval, args.min_duration))
     
     # Determine number of worker processes
@@ -168,20 +168,20 @@ def main():
         else:
             failed_videos.append(failure_info)
     
-    # Write metadata to JSON file
-    with open(args.metadata_path, 'w') as f:
+    # Write metadata to JSON file using absolute path
+    with open(os.path.abspath(args.metadata_path), 'w') as f:
         json.dump(all_metadata, f, indent=2)
     
     # Write failed videos to JSON file
-    failed_metadata_path = os.path.join(os.path.dirname(args.metadata_path), "failed_videos.json")
-    with open(failed_metadata_path, 'w') as f:
+    failed_metadata_path = os.path.join(os.path.dirname(os.path.abspath(args.metadata_path)), "failed_videos.json")
+    with open(os.path.abspath(failed_metadata_path), 'w') as f:
         json.dump({"failed_videos": failed_videos}, f, indent=2)
     
     print(f"\nProcessing complete!")
     print(f"  Successfully processed: {len(all_metadata)} videos")
     print(f"  Failed to process: {len(failed_videos)} videos")
-    print(f"  Metadata saved to: {args.metadata_path}")
-    print(f"  Failed videos logged to: {failed_metadata_path}")
+    print(f"  Metadata saved to: {os.path.abspath(args.metadata_path)}")
+    print(f"  Failed videos logged to: {os.path.abspath(failed_metadata_path)}")
 
 
 def process_single_video(video_info):

@@ -384,7 +384,10 @@ def main():
     output_file = '/data1/whq/annotation_maker/annotation_concatter/concatenated_video_annotations.json'
     
     # 生成拼接标注，使用更高的并发数
-    generate_concat_annotations(concat_plan_file, video_descriptions_file, output_file, max_workers=30)
+    generate_concat_annotations(os.path.abspath(concat_plan_file), 
+                              os.path.abspath(video_descriptions_file),
+                              os.path.abspath(output_file), 
+                              max_workers=30)
 
 
 if __name__ == "__main__":

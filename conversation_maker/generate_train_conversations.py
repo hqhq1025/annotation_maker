@@ -21,13 +21,13 @@ from pathlib import Path
 
 def load_concat_plan(plan_file: str) -> List[Dict]:
     """加载拼接计划文件"""
-    with open(plan_file, 'r', encoding='utf-8') as f:
+    with open(os.path.abspath(plan_file), 'r', encoding='utf-8') as f:
         return json.load(f)
 
 
 def load_video_annotations(annotation_file: str) -> Dict[str, List[Dict]]:
     """加载原始视频标注文件"""
-    with open(annotation_file, 'r', encoding='utf-8') as f:
+    with open(os.path.abspath(annotation_file), 'r', encoding='utf-8') as f:
         raw_annotations = json.load(f)
     
     # 转换为以video_id为键的字典，方便查找
@@ -54,8 +54,8 @@ def generate_train_conversations(concat_plan_file: str,
     """
     
     # 加载输入文件
-    concat_plans = load_concat_plan(concat_plan_file)
-    video_annotations = load_video_annotations(annotation_file)
+    concat_plans = load_concat_plan(os.path.abspath(concat_plan_file))
+    video_annotations = load_video_annotations(os.path.abspath(annotation_file))
     
     # 结果存储
     train_conversations = []
@@ -163,7 +163,7 @@ def generate_train_conversations(concat_plan_file: str,
         })
     
     # 保存结果
-    with open(output_file, 'w', encoding='utf-8') as f:
+    with open(os.path.abspath(output_file), 'w', encoding='utf-8') as f:
         json.dump(train_conversations, f, ensure_ascii=False, indent=2)
     
     print(f"生成完成，共处理 {len(train_conversations)} 个拼接视频")
@@ -188,10 +188,10 @@ def main():
     args = parser.parse_args()
     
     generate_train_conversations(
-        args.concat_plan,
-        args.annotations,
-        args.sample_frames_dir,
-        args.output
+        os.path.abspath(args.concat_plan),
+        os.path.abspath(args.annotations),
+        os.path.abspath(args.sample_frames_dir),
+        os.path.abspath(args.output)
     )
 
 

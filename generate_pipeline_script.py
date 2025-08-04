@@ -22,10 +22,10 @@ set -e  # 遇到错误时停止执行
 echo "开始执行视频标注生成流程..."
 
 # ========== 配置参数 ==========
-WORKSPACE_ROOT="{args.workspace_root}"
-INPUT_VIDEOS_DIR="{args.input_videos_dir}"
-SAMPLE_FRAMES_DIR="{args.sample_frames_dir}"
-ANNOTATION_MAKER_DIR="$WORKSPACE_ROOT/annotation_maker"
+WORKSPACE_ROOT="{os.path.abspath(args.workspace_root)}"
+INPUT_VIDEOS_DIR="{os.path.abspath(args.input_videos_dir)}"
+SAMPLE_FRAMES_DIR="{os.path.abspath(args.sample_frames_dir)}"
+ANNOTATION_MAKER_DIR="{os.path.abspath(os.path.join(args.workspace_root, 'annotation_maker'))}"
 
 # 视频采样参数
 SAMPLING_INTERVAL={args.sampling_interval}
@@ -54,7 +54,7 @@ python3 $ANNOTATION_MAKER_DIR/video_sampler/sample_videos.py \\
 
 # ========== 步骤2: 生成拼接策略 ==========
 echo "步骤2: 生成拼接策略"
-CONCAT_PLAN_DIR="$ANNOTATION_MAKER_DIR/concat_planer"
+CONCAT_PLAN_DIR="{os.path.abspath(os.path.join(args.workspace_root, 'annotation_maker', 'concat_planer'))}"
 mkdir -p "$CONCAT_PLAN_DIR"
 python3 $ANNOTATION_MAKER_DIR/concat_planer/concat_planer.py \\
   --video_metadata "$SAMPLE_FRAMES_DIR/video_metadata.json" \\
@@ -69,25 +69,25 @@ python3 $ANNOTATION_MAKER_DIR/concat_planer/concat_planer.py \\
 
 # ========== 步骤3: 构造拼接视频标注 ==========
 echo "步骤3: 构造拼接视频标注"
-ANNOTATION_CONCATTER_DIR="$ANNOTATION_MAKER_DIR/annotation_concatter"
+ANNOTATION_CONCATTER_DIR="{os.path.abspath(os.path.join(args.workspace_root, 'annotation_maker', 'annotation_concatter'))}"
 mkdir -p "$ANNOTATION_CONCATTER_DIR"
 python3 $ANNOTATION_MAKER_DIR/annotation_concatter/generate_concat_annotations.py
 
 # ========== 步骤4: 清理空summary数据 ==========
 echo "步骤4: 清理空summary数据"
-DATA_FILTER_DIR="$ANNOTATION_MAKER_DIR/data_filter"
+DATA_FILTER_DIR="{os.path.abspath(os.path.join(args.workspace_root, 'annotation_maker', 'data_filter'))}"
 mkdir -p "$DATA_FILTER_DIR"
 python3 $ANNOTATION_MAKER_DIR/data_filter/clean_empty_summaries.py
 
 # ========== 步骤5: 生成对话格式训练数据 ==========
 echo "步骤5: 生成对话格式训练数据"
-CONVERSATION_MAKER_DIR="$ANNOTATION_MAKER_DIR/conversation_maker"
+CONVERSATION_MAKER_DIR="{os.path.abspath(os.path.join(args.workspace_root, 'annotation_maker', 'conversation_maker'))}"
 mkdir -p "$CONVERSATION_MAKER_DIR"
 python3 $ANNOTATION_MAKER_DIR/conversation_maker/generate_train_conversations.py
 
 # ========== 步骤6: 数据统计分析 ==========
 echo "步骤6: 数据统计分析"
-STATISTIC_DIR="$ANNOTATION_MAKER_DIR/statistic"
+STATISTIC_DIR="{os.path.abspath(os.path.join(args.workspace_root, 'annotation_maker', 'statistic'))}"
 mkdir -p "$STATISTIC_DIR"
 python3 $ANNOTATION_MAKER_DIR/statistic/analyze_concatenated_videos.py \\
   $ANNOTATION_CONCATTER_DIR/concatenated_video_annotations_cleaned.json \\
@@ -104,7 +104,7 @@ echo "6. 统计分析结果: $STATISTIC_DIR/analysis_result.txt"
 """
 
     # 写入脚本文件
-    script_path = os.path.join(args.workspace_root, args.output_script)
+    script_path = os.path.join(os.path.abspath(args.workspace_root), args.output_script)
     with open(script_path, 'w', encoding='utf-8') as f:
         f.write(script_content)
     

@@ -9,18 +9,19 @@
 
 import json
 import argparse
+import os
 from typing import List, Dict, Any
 
 
 def load_annotations(annotation_file: str) -> List[Dict]:
     """加载原始视频标注文件"""
-    with open(annotation_file, 'r', encoding='utf-8') as f:
+    with open(os.path.abspath(annotation_file), 'r', encoding='utf-8') as f:
         return json.load(f)
 
 
 def save_annotations(annotations: List[Dict], output_file: str):
     """保存清理后的视频标注文件"""
-    with open(output_file, 'w', encoding='utf-8') as f:
+    with open(os.path.abspath(output_file), 'w', encoding='utf-8') as f:
         json.dump(annotations, f, ensure_ascii=False, indent=2)
 
 
@@ -86,7 +87,7 @@ def main():
     
     # 加载原始标注文件
     print("加载原始视频标注文件...")
-    annotations = load_annotations(args.input)
+    annotations = load_annotations(os.path.abspath(args.input))
     print(f"原始文件包含 {len(annotations)} 个拼接视频")
     
     # 清理包含空summary的拼接视频
@@ -96,7 +97,7 @@ def main():
     
     # 保存清理后的文件
     print("保存清理后的视频标注文件...")
-    save_annotations(cleaned_annotations, args.output)
+    save_annotations(cleaned_annotations, os.path.abspath(args.output))
     print(f"清理后的文件已保存至: {args.output}")
 
 

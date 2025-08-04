@@ -362,8 +362,8 @@ def main():
     
     # 创建并运行视频拼接器
     concatenator = VideoConcatenator(
-        video_metadata=args.video_metadata,
-        output_dir=args.output_dir,
+        video_metadata=os.path.abspath(args.video_metadata),
+        output_dir=os.path.abspath(args.output_dir),
         total_concats=args.total_concats,
         min_videos_per_concat=args.min_videos_per_concat,
         max_videos_per_concat=args.max_videos_per_concat,
