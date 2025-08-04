@@ -16,7 +16,7 @@
 
 ### 3. 拼接策略文件（拼接信息）
 
-描述每个新拼接视频是由哪些原视频组合而成，存储在 `concat_plan/concat_metadata.json` 文件中。
+描述每个新拼接视频是由哪些原视频组合而成，存储在 `annotation_maker/concat_planer/concat_metadata.json` 文件中。
 
 ## 安装依赖
 

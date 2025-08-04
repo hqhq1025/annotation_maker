@@ -21,7 +21,6 @@ TOTAL_CONCATS="${3:-5000}"
 MIN_VIDEOS_PER_CONCAT="${4:-2}"
 MAX_VIDEOS_PER_CONCAT="${5:-6}"
 TARGET_DURATION_MIN="${6:-20.0}"
-TARGET_DURATION_MIN="${6:-20.0}"
 TARGET_DURATION_MAX="${7:-120.0}"
 REUSE_MODE="${8:-balanced}"
 MAX_USAGE_RATIO="${9:-4.0}"
@@ -92,59 +91,6 @@ if [ -f "$OUTPUT_DIR/concat_metadata.json" ]; then
         COUNT=$(jq "[.[] | select(.videos | length == $i)] | length" "$OUTPUT_DIR/concat_metadata.json")
         echo "  包含 $i 个视频的拼接: $COUNT 个"
     done
-    
-    # 时长统计
-    echo ""
-    echo "时长统计信息:"
-    
-    # 总时长
-    TOTAL_DURATION=$(jq '[.[] | .total_duration] | add' "$OUTPUT_DIR/concat_metadata.json")
-    echo "  总时长: $(printf "%.2f" $TOTAL_DURATION) 秒 ($(printf "%.2f" $(echo "$TOTAL_DURATION/3600" | bc -l)) 小时)"
-    
-    # 平均时长
-    AVG_DURATION=$(jq '[.[] | .total_duration] | add / length' "$OUTPUT_DIR/concat_metadata.json")
-    echo "  平均时长: $(printf "%.2f" $AVG_DURATION) 秒"
-    
-    # 最短时长
-    MIN_DURATION=$(jq '[.[] | .total_duration] | min' "$OUTPUT_DIR/concat_metadata.json")
-    echo "  最短时长: $(printf "%.2f" $MIN_DURATION) 秒"
-    
-    # 最长时长
-    MAX_DURATION=$(jq '[.[] | .total_duration] | max' "$OUTPUT_DIR/concat_metadata.json")
-    echo "  最长时长: $(printf "%.2f" $MAX_DURATION) 秒"
-    
-    # 时长分布统计
-    echo ""
-    echo "时长分布统计:"
-    DURATION_RANGES=("0-30" "30-60" "60-90" "90-120" "120+")
-    for range in "${DURATION_RANGES[@]}"; do
-        if [ "$range" = "120+" ]; then
-            COUNT=$(jq "[.[] | select(.total_duration >= 120)] | length" "$OUTPUT_DIR/concat_metadata.json")
-            echo "  时长 >= 120 秒: $COUNT 个"
-        else
-            MIN_SEC=$(echo $range | cut -d'-' -f1)
-            MAX_SEC=$(echo $range | cut -d'-' -f2)
-            COUNT=$(jq "[.[] | select(.total_duration >= $MIN_SEC and .total_duration < $MAX_SEC)] | length" "$OUTPUT_DIR/concat_metadata.json")
-            echo "  时长 ${MIN_SEC}-${MAX_SEC} 秒: $COUNT 个"
-        fi
-    done
-    
-    # 检查是否符合时长要求
-    echo ""
-    echo "时长符合性检查:"
-    UNDER_MIN_COUNT=$(jq "[.[] | select(.total_duration < $TARGET_DURATION_MIN)] | length" "$OUTPUT_DIR/concat_metadata.json")
-    OVER_MAX_COUNT=$(jq "[.[] | select(.total_duration > $TARGET_DURATION_MAX)] | length" "$OUTPUT_DIR/concat_metadata.json")
-    
-    if [ $UNDER_MIN_COUNT -eq 0 ] && [ $OVER_MAX_COUNT -eq 0 ]; then
-        echo "  ✓ 所有拼接视频的时长都在目标范围内 ($TARGET_DURATION_MIN - $TARGET_DURATION_MAX 秒)"
-    else
-        if [ $UNDER_MIN_COUNT -gt 0 ]; then
-            echo "  ✗ 有 $UNDER_MIN_COUNT 个拼接视频时长小于最小要求 ($TARGET_DURATION_MIN 秒)"
-        fi
-        if [ $OVER_MAX_COUNT -gt 0 ]; then
-            echo "  ✗ 有 $OVER_MAX_COUNT 个拼接视频时长大于最大要求 ($TARGET_DURATION_MAX 秒)"
-        fi
-    fi
 else
     echo "警告: 未生成拼接元数据文件"
 fi
