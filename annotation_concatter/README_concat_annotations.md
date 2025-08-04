@@ -78,6 +78,4 @@ python3 generate_concat_annotations.py
 
 ## 注意事项
 
-当前版本为演示版本，实际使用时需要集成真实的LLM API调用。在 [process_concat_video](file:///data1/whq/annotation_maker/annotation_concatter/generate_concat_annotations.py#L128-L166) 函数中，标注了需要调用LLM的位置，用户可以根据自己的需求替换为实际的API调用代码。
-
-输出文件已重命名为: `concatenated_video_annotations.json`
+当前版本为演示版本，实际使用时需要集成真实的LLM API调用。在 [process_concat_video](file:///data1/whq/generate_concat_annotations.py#L128-L166) 函数中，标注了需要调用LLM的位置，用户可以根据自己的需求替换为实际的API调用代码。

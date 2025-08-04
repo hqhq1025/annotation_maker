@@ -12,11 +12,6 @@ import json
 import os
 import math
 from typing import List, Dict, Any
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from threading import Lock
-
-# 添加OpenAI库导入
-from openai import OpenAI
 
 
 def load_concat_plan(plan_file: str) -> List[Dict]:
@@ -108,158 +103,28 @@ def get_frame_paths(video_id: str, start_time: float, end_time: float,
     return frame_paths
 
 
-def generate_transition_prompt(prev_summaries: List[tuple], current_summary: str) -> str:
+def generate_transition_prompt(prev_summary: str, current_summary: str) -> str:
     """
-    生成用于LLM的过渡提示词，包含前面所有片段的信息
+    生成用于LLM的过渡提示词
     
     Args:
-        prev_summaries: 前面所有视频片段的描述列表，每个元素包含(视频ID, 描述)元组
+        prev_summary: 前一个视频片段的描述
         current_summary: 当前视频片段的描述
         
     Returns:
         过渡提示词
     """
-    # 构建前面片段的描述文本
-    if prev_summaries:
-        # 限制历史片段数量，避免过长
-        max_history = 3
-        if len(prev_summaries) > max_history:
-            # 只保留最近的几个片段
-            prev_summaries = prev_summaries[-max_history:]
-        
-        history_str = "\n".join([
-            f"Segment {i+1} (from video {video_id}):\n{summary}"
-            for i, (video_id, summary) in enumerate(prev_summaries)
-        ])
-    else:
-        history_str = "(No previous content)"
-    
-    current_str = current_summary
-    
-    prompt = f"""You are a video concatenation description assistant. You will receive:
-1. **History**: Descriptions of previous video segments in a concatenated video (may be empty for the first segment).  
-2. **Current**: Description of the current video segment.
+    prompt = f'''请根据以下两个视频片段的文字描述，为拼接视频生成连贯、自然的描述内容：
 
-Your task is to combine **Current** with **History** to produce one **short**, **coherent**, and **natural** paragraph summary (1–2 sentences) in a continuous storytelling style. The summary should:
+第一个视频片段的内容如下：
+"{prev_summary}"
 
-- Seamlessly connect past and present content as a single narrative, referencing previous segments to create smooth transitions between scenes.
-- For the third segment onwards, reference content from recent previous segments to maintain narrative continuity, but focus primarily on the current scene.
-- Focus on describing **what has changed** or **what's new** in the current scene, while maintaining context from previous segments.
-- When there are contextual connections between segments, clearly describe what has been added, changed, or is being done differently based on the previous content.
-- **Do not** repeat objects, settings, or details already mentioned in **History** unless necessary for context.
-- **Avoid** any atmospheric, emotional, or subjective commentary; describe the visual content **objectively**.
-- **Do not** start with "This video…" or similar phrases.
-- If **History** is empty, simply summarize **Current** on its own.
-- Use varied and natural transition expressions instead of always using "following". Examples include:
-  * "After organizing items in the kitchen, the scene shifts to..."
-  * "Continuing the sequence, the video now shows..."
-  * "Building upon the previous scenes of..., the current segment presents..."
-  * "Transitioning from the earlier segment, we now see..."
-  * "With the completion of... the focus moves to..."
-  * "Having finished with..., the person now proceeds to..."
-  * "The scene then changes to show..."
-  * "Subsequently, the setting shifts to..."
-- **Avoid** repetitive transitions or descriptions that simply restate what was already described in previous segments.
-- **Focus** on how the current scene builds upon or differs from previous scenes rather than restating them.
-- **Create** natural narrative flow by emphasizing the progression of activities or changes in setting.
+当前视频片段的内容如下：
+"{current_summary}"
 
-Examples of good transitions:
-- "After arranging objects in a box, the scene shifts to someone preparing a beverage in a kitchen."
-- "Continuing from the previous segment where items were organized into bags, the person now moves to a different area to tidy up a pair of shoes."
-- "Building upon the previous scenes of organizing items in the kitchen and packing belongings, the current segment shows a person carefully tying their shoelaces."
-- "With the completion of organizing personal items into handbags, the focus now moves to a more personal grooming activity as the scene shows someone attending to their footwear."
-
----
-### Input
-
-History:
-{history_str}
-
-Current:
-{current_str}
-
-### Output
-A single paragraph summary (1–2 sentences) in natural storytelling style, highlighting changes and maintaining narrative flow while avoiding repetition. No extra text."""
+请写出一段自然语言段落，重点描述当前片段的内容，同时简要提及前一片段，实现语义过渡与衔接。语言应简洁清晰、逻辑通顺，不要逐帧罗列，也不要虚构内容。'''
 
     return prompt
-
-
-def call_llm_api(prompt: str) -> str:
-    """
-    调用大语言模型API生成过渡描述
-    
-    Args:
-        prompt: 发送给大模型的提示词
-        
-    Returns:
-        大模型生成的过渡描述
-    """
-    # 初始化OpenAI客户端
-    client = OpenAI(
-        # 若没有配置环境变量，请用百炼API Key将下行替换为：api_key="sk-xxx",
-        api_key="sk-07809ce5885f4fc3aefd07b0ca0e1e11",  # 如何获取API Key：https://help.aliyun.com/zh/model-studio/developer-reference/get-api-key
-        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
-    )
-    
-    try:
-        completion = client.chat.completions.create(
-            model="qwen-plus",  # 模型列表：https://help.aliyun.com/zh/model-studio/getting-started/models
-            messages=[
-                {'role': 'system', 'content': 'You are a helpful assistant specialized in generating coherent video descriptions for concatenated videos.'},
-                {'role': 'user', 'content': prompt}
-            ],
-            temperature=0.7,
-            max_tokens=512
-        )
-        return completion.choices[0].message.content
-    except Exception as e:
-        print(f"调用大模型API时出错: {e}")
-        # 出错时返回原始描述加上过渡标记
-        return f"[TRANSITION_ERROR] {prompt.split('Current:')[1].split('### Output')[0].strip()}"
-
-
-def process_single_segment(i: int, boundaries: List[Dict], video_descriptions: Dict[str, str]) -> Dict[str, Any]:
-    """
-    处理单个视频片段
-    
-    Args:
-        i: 片段索引
-        boundaries: 所有边界信息
-        video_descriptions: 视频描述字典
-        
-    Returns:
-        处理后的片段数据
-    """
-    boundary = boundaries[i]
-    video_id = boundary['video_id']
-    start_time = boundary['start_time']
-    end_time = boundary['end_time']
-    
-    # 获取视频描述
-    summary = video_descriptions.get(video_id, "")
-    
-    # 对于非第一个片段，生成过渡提示并调用LLM
-    if i > 0 and summary:
-        # 收集前面所有片段的描述
-        prev_summaries = []
-        for j in range(i):
-            prev_video_id = boundaries[j]['video_id']
-            prev_summary = video_descriptions.get(prev_video_id, "")
-            if prev_summary:
-                prev_summaries.append((prev_video_id, prev_summary))
-        
-        if prev_summaries and summary:
-            # 生成过渡提示词
-            transition_prompt = generate_transition_prompt(prev_summaries, summary)
-            # 调用大模型API
-            summary = call_llm_api(transition_prompt)
-    
-    return {
-        "video_id": video_id,
-        "start": start_time,
-        "end": end_time,
-        "summary": summary
-    }
 
 
 def process_concat_video(concat_item: Dict, video_descriptions: Dict[str, str]) -> Dict[str, Any]:
@@ -277,33 +142,32 @@ def process_concat_video(concat_item: Dict, video_descriptions: Dict[str, str]) 
     
     result_data = []
     
-    # 使用线程池并发处理每个片段，增加并发数到20
-    with ThreadPoolExecutor(max_workers=20) as executor:
-        # 提交所有任务
-        future_to_index = {
-            executor.submit(process_single_segment, i, concat_item['boundaries'], video_descriptions): i
-            for i in range(len(concat_item['boundaries']))
-        }
+    for i, boundary in enumerate(concat_item['boundaries']):
+        video_id = boundary['video_id']
+        start_time = boundary['start_time']
+        end_time = boundary['end_time']
         
-        # 收集结果
-        results = [None] * len(concat_item['boundaries'])
-        for future in as_completed(future_to_index):
-            index = future_to_index[future]
-            try:
-                result = future.result()
-                results[index] = result
-            except Exception as e:
-                print(f"处理片段 {index} 时出错: {e}")
-                # 使用默认值填充
-                boundary = concat_item['boundaries'][index]
-                results[index] = {
-                    "video_id": boundary['video_id'],
-                    "start": boundary['start_time'],
-                    "end": boundary['end_time'],
-                    "summary": "[PROCESSING_ERROR]"
-                }
+        # 获取视频描述
+        summary = video_descriptions.get(video_id, "")
         
-        result_data = results
+        # 对于非第一个片段，生成过渡提示（在实际应用中这里会调用LLM）
+        if i > 0 and summary:
+            prev_boundary = concat_item['boundaries'][i-1]
+            prev_video_id = prev_boundary['video_id']
+            prev_summary = video_descriptions.get(prev_video_id, "")
+            
+            if prev_summary and summary:
+                # 在实际应用中，这里会调用LLM API
+                # 为演示目的，我们直接生成一个简单的过渡描述
+                transition_prompt = generate_transition_prompt(prev_summary, summary)
+                # 模拟LLM响应
+                summary = f"[TRANSITION] {summary}"
+        
+        result_data.append({
+            "start": start_time,
+            "end": end_time,
+            "summary": summary
+        })
     
     return {
         "video": concat_video_id,
@@ -313,8 +177,7 @@ def process_concat_video(concat_item: Dict, video_descriptions: Dict[str, str]) 
 
 def generate_concat_annotations(concat_plan_file: str, 
                               video_descriptions_file: str,
-                              output_file: str,
-                              max_workers: int = 20) -> None:
+                              output_file: str) -> None:
     """
     主函数：生成拼接视频标注数据
     
@@ -322,7 +185,6 @@ def generate_concat_annotations(concat_plan_file: str,
         concat_plan_file: 拼接策略文件路径
         video_descriptions_file: 视频描述文件路径
         output_file: 输出文件路径
-        max_workers: 并发处理的最大工作线程数
     """
     # 加载拼接策略
     print("加载拼接策略...")
@@ -338,33 +200,10 @@ def generate_concat_annotations(concat_plan_file: str,
     print("处理拼接视频...")
     results = []
     
-    # 使用线程池并发处理拼接视频，增加并发数到20
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # 提交所有任务
-        future_to_index = {
-            executor.submit(process_concat_video, concat_item, video_descriptions): i
-            for i, concat_item in enumerate(concat_plan)
-        }
-        
-        # 收集结果
-        processed_results = [None] * len(concat_plan)
-        for future in as_completed(future_to_index):
-            index = future_to_index[future]
-            try:
-                result = future.result()
-                processed_results[index] = result
-                print(f"已完成 {index+1}/{len(concat_plan)}: {concat_plan[index]['concat_video']}")
-            except Exception as e:
-                print(f"处理拼接视频 {index} 时出错: {e}")
-                concat_item = concat_plan[index]
-                concat_video_id = concat_item['concat_video'].replace('.mp4', '')
-                # 使用默认值填充
-                processed_results[index] = {
-                    "video": concat_video_id,
-                    "data": []
-                }
-        
-        results = [r for r in processed_results if r is not None]
+    for i, concat_item in enumerate(concat_plan):
+        print(f"处理 {i+1}/{len(concat_plan)}: {concat_item['concat_video']}")
+        result = process_concat_video(concat_item, video_descriptions)
+        results.append(result)
     
     # 保存结果
     print(f"保存结果到 {output_file}...")
@@ -381,10 +220,10 @@ def main():
     # 文件路径配置
     concat_plan_file = '/data1/whq/concat_plan/concat_metadata.json'
     video_descriptions_file = '/data1/whq/sharegpt4o/video_conversations/gpt4o.jsonl'
-    output_file = '/data1/whq/annotation_maker/annotation_concatter/concatenated_video_annotations.json'
+    output_file = '/data1/whq/concat_annotations.json'
     
-    # 生成拼接标注，使用更高的并发数
-    generate_concat_annotations(concat_plan_file, video_descriptions_file, output_file, max_workers=20)
+    # 生成拼接标注
+    generate_concat_annotations(concat_plan_file, video_descriptions_file, output_file)
 
 
 if __name__ == "__main__":
